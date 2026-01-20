@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ch9tGPT Ultimate</title>
+<title>ch9tGPT Full Self-Contained AI</title>
 <style>
 body {margin:0;padding:0;font-family:Arial,sans-serif;background:#0d0f14;color:white;}
-#app{max-width:600px;margin:auto;padding:20px;}
+#app{max-width:700px;margin:auto;padding:20px;}
 h1{text-align:center;margin-bottom:10px;}
-#messages{background:#1a1c22;padding:15px;border-radius:8px;height:350px;overflow-y:auto;margin-bottom:10px;border:1px solid #333;}
+#messages{background:#1a1c22;padding:15px;border-radius:8px;height:400px;overflow-y:auto;margin-bottom:10px;border:1px solid #333;}
 .msg{margin-bottom:12px;padding:10px;border-radius:6px;max-width:80%;word-break:break-word;}
 .user{background:#2d75ff;margin-left:auto;}
 .bot{background:#2e2e38;margin-right:auto;}
@@ -17,14 +17,15 @@ h1{text-align:center;margin-bottom:10px;}
 #sendBtn{padding:12px 20px;background:#2d75ff;border:none;border-radius:6px;color:#fff;font-size:16px;cursor:pointer;}
 #sendBtn:hover{background:#1f5fe0;}
 #fileInput{margin-bottom:10px;}
-.output-area, #devPanel{background:#1a1c22;padding:10px;margin-top:5px;border-radius:6px;overflow:auto;max-height:150px;}
-.code-block{background:#2b2b3a;padding:8px;border-radius:4px;white-space:pre-wrap;font-family:monospace;margin-top:5px;}
-img.upload-preview{max-width:100%;border-radius:6px;margin-top:5px;}
+.output-area, #devPanel{background:#1a1c22;padding:10px;margin-top:5px;border-radius:6px;overflow:auto;max-height:180px;}
+.code-block{background:#2b2b3a;padding:8px;border-radius:4px;white-space:pre-wrap;font-family:monospace;margin-top:5px;cursor:pointer;}
+img.upload-preview, video.upload-preview, canvas.upload-preview{max-width:100%;border-radius:6px;margin-top:5px;}
+.summary-block{background:#2b2b3a;padding:8px;border-radius:4px;margin-top:5px;}
 </style>
 </head>
 <body>
 <div id="app">
-<h1>ch9tGPT Ultimate</h1>
+<h1>ch9tGPT Full Self-Contained AI</h1>
 <div id="messages"></div>
 <div id="input-area">
 <input id="userInput" placeholder="Type a message..." />
@@ -41,14 +42,13 @@ class Ch9tGPT {
   constructor(){
     this.memory=[];
     this.fileData=[];
-    this.IP=300;
     this.personalities={
-      Classic:{name:"BLUOM Classic",mood:"calm",style:"professional"},
-      HyperFriendly:{name:"BLUOM HyperFriendly",mood:"happy",style:"friendly"},
-      UltraSmart:{name:"BLUOM UltraSmart",mood:"curious",style:"technical"},
-      Sarah:{name:"Sarah",mood:"energetic",style:"friendly"}
+      Classic:{name:"BLUOM Classic",mood:"calm",emoji:"💼"},
+      HyperFriendly:{name:"BLUOM HyperFriendly",mood:"happy",emoji:"😄"},
+      UltraSmart:{name:"BLUOM UltraSmart",mood:"curious",emoji:"🤓"},
+      Sarah:{name:"Sarah",mood:"energetic",emoji:"❤️"}
     };
-    this.currentPersonality="Classic"; // default
+    this.currentPersonality="Classic";
     this.devPanel=document.getElementById("devPanel");
   }
 
@@ -85,10 +85,8 @@ class Ch9tGPT {
   }
 
   async generateResponse(input){
-    // Personality change command
-    const cmd=input.trim();
-    if(cmd.startsWith("/setPersonality")){
-      const p=cmd.split(" ")[1];
+    if(input.startsWith("/setPersonality")){
+      const p=input.split(" ")[1];
       this.setPersonality(p);
       return `✅ Personality switched to ${p}`;
     }
@@ -98,38 +96,53 @@ class Ch9tGPT {
 
     const t=input.toLowerCase();
     let response="";
-    if(t==="hi"||t==="hey"||t==="hello") response="😄 Hey! How’s it going?";
-    else if(t.includes("name")) response=`I’m ${this.personalities[this.currentPersonality].name} 🤖 What about you?`;
-    else if(t.includes("how are you")) response="Feeling great today! 😄";
-    else if(t.includes("draw")||t.includes("image")) response=this.generateImage(input);
+    const mood=this.personalities[this.currentPersonality].mood;
+    const emoji=this.personalities[this.currentPersonality].emoji || "🤔";
+
+    // Chat replies
+    if(["hi","hello","hey"].includes(t)) response=`${emoji} Hey! How’s it going?`;
+    else if(t.includes("name")) response=`I’m ${this.personalities[this.currentPersonality].name} ${emoji}. What’s your name?`;
+    else if(t.includes("how are you")) response=`Feeling great today! ${emoji}`;
+    // Code generation
     else if(t.includes("code")||t.includes("python")||t.includes("html")||t.includes("css")) response=this.generateCode(input);
-    else{
-      let recent=this.memory.slice(-20).join(" ");
-      let files=this.fileData.map(f=>f.text).join(" ");
-      let combined=`${recent} ${files} ${input}`.replace(/\[object.*?\]/gi,"");
-      if(combined.length>this.IP) combined=combined.slice(0,this.IP);
-      let mood=this.personalities[this.currentPersonality].mood;
-      let emoji="🤔 ";
-      if(mood==="happy") emoji="😄 ";
-      if(mood==="playful") emoji="😏 ";
-      if(mood==="comforting") emoji="💙 ";
-      // simulate thinking pause
-      await new Promise(r=>setTimeout(r,Math.min(1500,combined.length*10)));
-      response=emoji+combined.trim();
-      if(!/[.!?]$/.test(response)) response+=".";
-    }
+    // Image generation
+    else if(t.includes("draw")||t.includes("image")) response=this.generateImage(input);
+    else response=`${emoji} ${input} — I’m thinking… 😏`;
 
     this.remember(response);
     this.logDev("Bot response:",response);
     return response;
   }
 
-  generateImage(prompt){return `🖼️ (Pretend image) Generated for: "${prompt}"`;}
   generateCode(prompt){
-    if(prompt.includes("python")) return "```python\nprint('Hello from ch9tGPT')\n```";
-    if(prompt.includes("html")) return "```html\n<h1>Hello from ch9tGPT</h1>\n```";
-    if(prompt.includes("css")) return "```css\nbody { background:#4af; color:white; }\n```";
-    return "```javascript\nconsole.log('Hello from ch9tGPT');\n```";
+    // Simple procedural code generation
+    if(prompt.toLowerCase().includes("python")){
+      return "```python\n# Generated Python code\nprint('Hello from ch9tGPT')\n```";
+    }
+    if(prompt.toLowerCase().includes("html")){
+      return "```html\n<!-- Generated HTML -->\n<h1>Hello from ch9tGPT</h1>\n```";
+    }
+    if(prompt.toLowerCase().includes("css")){
+      return "```css\n/* Generated CSS */\nbody { background:#4af; color:white; }\n```";
+    }
+    return "```javascript\n// Generated JS\nconsole.log('Hello from ch9tGPT');\n```";
+  }
+
+  generateImage(prompt){
+    // Procedural Canvas image generation
+    const canvas=document.createElement("canvas");
+    canvas.width=300; canvas.height=200;
+    const ctx=canvas.getContext("2d");
+
+    // Generate pseudo-random abstract colors based on prompt
+    let hash=0;
+    for(let i=0;i<prompt.length;i++) hash+=prompt.charCodeAt(i);
+    for(let i=0;i<10;i++){
+      ctx.fillStyle=`hsl(${(hash*7+i*36)%360},${50+((hash+i)%50)}%,${50+((hash*3+i)%50)}%)`;
+      ctx.fillRect(Math.random()*250,Math.random()*150,50,50);
+    }
+    canvas.className="upload-preview";
+    return canvas.outerHTML;
   }
 
   async addFile(file){
@@ -138,11 +151,22 @@ class Ch9tGPT {
       reader.onload=()=>{
         this.fileData.push({name:file.name,type:file.type,text:reader.result});
         this.logDev("File added:",file.name);
+        const fileOutput=document.getElementById("fileOutput");
         if(file.type.startsWith("image/")){
           const img=document.createElement("img");
           img.src=reader.result;
           img.className="upload-preview";
-          document.getElementById("fileOutput").appendChild(img);
+          fileOutput.appendChild(img);
+        }else if(file.type.startsWith("video/")){
+          const video=document.createElement("video");
+          video.src=reader.result;
+          video.controls=true;
+          video.className="upload-preview";
+          fileOutput.appendChild(video);
+        }else{
+          const div=document.createElement("div");
+          div.textContent=`📄 ${file.name} uploaded`;
+          fileOutput.appendChild(div);
         }
         resolve();
       };
@@ -153,7 +177,6 @@ class Ch9tGPT {
 
 window.ch9tGPT=new Ch9tGPT();
 
-// CHAT FUNCTIONS
 const messagesDiv=document.getElementById("messages");
 const input=document.getElementById("userInput");
 const sendBtn=document.getElementById("sendBtn");
@@ -166,13 +189,13 @@ function addMessage(text,sender,isCode=false){
     const pre=document.createElement("pre");
     pre.className="code-block";
     pre.textContent=text;
+    pre.onclick=()=>{navigator.clipboard.writeText(text)};
     div.appendChild(pre);
-  }else div.textContent=text;
+  } else div.innerHTML=text; // allow inline canvas/images
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop=messagesDiv.scrollHeight;
 }
 
-// SEND MESSAGE
 sendBtn.onclick=async()=>{
   let text=input.value.trim();
   if(!text) return;
@@ -183,12 +206,10 @@ sendBtn.onclick=async()=>{
   addMessage(reply,"bot",isCode);
 };
 
-// ENTER KEY
 input.addEventListener("keypress",e=>{
   if(e.key==="Enter") sendBtn.click();
 });
 
-// FILE UPLOAD
 fileInput.addEventListener("change",async e=>{
   document.getElementById("fileOutput").innerHTML="";
   for(const f of e.target.files){
